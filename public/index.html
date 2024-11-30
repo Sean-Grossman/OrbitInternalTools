@@ -43,6 +43,25 @@
             color: red;
             margin-top: 10px;
         }
+        .progress-container {
+            margin: 20px 0;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background-color: #f0f0f0;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        .progress {
+            height: 100%;
+            background-color: #0077b5;
+            transition: width 0.3s ease;
+        }
+        .progress-text {
+            text-align: center;
+            margin-top: 5px;
+        }
     </style>
 </head>
 <body>
@@ -61,42 +80,127 @@
             </form>
         </div>
 
+        <div class="progress-container" style="display: none;">
+            <div class="progress-bar">
+                <div class="progress" style="width: 0%"></div>
+            </div>
+            <div class="progress-text">0%</div>
+        </div>
+        
+        <div id="download-container" style="display: none; margin-top: 20px;">
+            <button id="downloadCsv" class="submit-btn">Download Results CSV</button>
+        </div>
+
         <div id="status"></div>
         <pre id="results"></pre>
     </div>
 
     <script>
-        document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+        const form = document.getElementById('uploadForm');
+        const status = document.getElementById('status');
+        const results = document.getElementById('results');
+        const progressContainer = document.querySelector('.progress-container');
+        const progressBar = document.querySelector('.progress');
+        const progressText = document.querySelector('.progress-text');
+        const downloadContainer = document.getElementById('download-container');
+        const downloadButton = document.getElementById('downloadCsv');
+
+        form.addEventListener('submit', async (e) => {
             e.preventDefault();
+            console.log('Form submitted');
             
-            const status = document.getElementById('status');
-            const results = document.getElementById('results');
+            const formData = new FormData();
             const fileInput = document.getElementById('csvFile');
-            
+            formData.append('file', fileInput.files[0]);
+
+            progressContainer.style.display = 'block';
+            downloadContainer.style.display = 'none';
             status.textContent = 'Processing...';
             results.textContent = '';
 
             try {
-                const formData = new FormData();
-                formData.append('file', fileInput.files[0]);
-
-                const response = await fetch('/process-csv', {
+                console.log('Sending request to server...');
+                const response = await fetch('/api/process', {
                     method: 'POST',
                     body: formData
                 });
 
-                const data = await response.json();
-                
-                if (data.status === 'success') {
-                    status.textContent = 'Processing completed!';
-                    results.textContent = JSON.stringify(data.results, null, 2);
-                } else {
-                    throw new Error(data.message || 'Processing failed');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                console.log('Starting to read response stream...');
+                const reader = response.body.getReader();
+                let buffer = '';
+
+                while(true) {
+                    const {done, value} = await reader.read();
+                    
+                    if (done) {
+                        console.log('Stream complete');
+                        break;
+                    }
+
+                    // Convert the chunk to text and add to buffer
+                    const chunk = new TextDecoder().decode(value);
+                    console.log('Received chunk:', chunk);
+                    buffer += chunk;
+
+                    // Process complete JSON objects from the buffer
+                    let newlineIndex;
+                    while ((newlineIndex = buffer.indexOf('\n')) !== -1) {
+                        const jsonString = buffer.slice(0, newlineIndex);
+                        buffer = buffer.slice(newlineIndex + 1);
+
+                        try {
+                            const data = JSON.parse(jsonString);
+                            console.log('Parsed data:', data);
+
+                            if (data.progress !== undefined) {
+                                const progress = Math.round(data.progress * 100);
+                                console.log('Updating progress:', progress);
+                                progressBar.style.width = `${progress}%`;
+                                progressText.textContent = `${progress}%`;
+                            }
+
+                            if (data.results) {
+                                console.log('Processing complete, showing results');
+                                status.textContent = 'Processing completed!';
+                                results.textContent = JSON.stringify(data.results, null, 2);
+                                downloadContainer.style.display = 'block';
+                                window.processedResults = data.results;
+                            }
+                        } catch (e) {
+                            console.error('Error parsing JSON:', e, 'Raw string:', jsonString);
+                        }
+                    }
                 }
             } catch (error) {
+                console.error('Error in request:', error);
                 status.textContent = 'Error!';
                 results.innerHTML = `<div class="error">${error.message}</div>`;
             }
+        });
+
+        downloadButton.addEventListener('click', () => {
+            if (!window.processedResults) return;
+
+            const csvContent = [
+                ['LinkedIn URL', 'Profile Picture URL', 'Status'],
+                ...window.processedResults.map(result => [
+                    result.url,
+                    result.status === 'success' ? result.profilePicture : '',
+                    result.status
+                ])
+            ].map(row => row.join(',')).join('\n');
+
+            const blob = new Blob([csvContent], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.setAttribute('href', url);
+            a.setAttribute('download', 'processed_profiles.csv');
+            a.click();
+            window.URL.revokeObjectURL(url);
         });
     </script>
 </body>

@@ -21,21 +21,27 @@ app.get('/health', (req, res) => {
 });
 
 // Configure multer for file upload
-const upload = multer({ dest: 'tmp/uploads/' });
-
-// Add the route before error handling
-app.post('/process-csv', upload.single('file'), processController.processProfiles);
-
-// Serve static files
-app.use(express.static(path.join(__dirname, '../public')));
-
-// Add this route before your other routes
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, '../public/index.html'));
+const upload = multer({
+    dest: 'uploads/',
+    limits: {
+        fileSize: 10 * 1024 * 1024 // 10MB limit
+    }
 });
 
-// Error handling
-app.use(errorHandler);
+// Serve static files from public directory
+app.use(express.static('public'));
+
+// API Routes
+app.post('/api/process', 
+    upload.single('file'), // Handle file upload
+    processController.processProfiles
+);
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+    logger.error('Error:', err);
+    res.status(500).json({ error: err.message });
+});
 
 const PORT = process.env.PORT || 3000;
 
