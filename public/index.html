@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LinkedIn Profile Processor</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .container {
+            background-color: #f5f5f5;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .upload-form {
+            margin: 20px 0;
+        }
+        .file-input {
+            margin: 10px 0;
+        }
+        .submit-btn {
+            background-color: #0077b5;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .submit-btn:hover {
+            background-color: #005582;
+        }
+        #results {
+            margin-top: 20px;
+            white-space: pre-wrap;
+        }
+        .error {
+            color: red;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>LinkedIn Profile Processor</h1>
+        
+        <div class="upload-form">
+            <h2>Upload CSV File</h2>
+            <p>Please upload a CSV file containing LinkedIn profile URLs. The file should have a column named 'linkedinUrl'.</p>
+            
+            <form id="uploadForm" enctype="multipart/form-data">
+                <div class="file-input">
+                    <input type="file" id="csvFile" accept=".csv" required>
+                </div>
+                <button type="submit" class="submit-btn">Process Profiles</button>
+            </form>
+        </div>
+
+        <div id="status"></div>
+        <pre id="results"></pre>
+    </div>
+
+    <script>
+        document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const status = document.getElementById('status');
+            const results = document.getElementById('results');
+            const fileInput = document.getElementById('csvFile');
+            
+            status.textContent = 'Processing...';
+            results.textContent = '';
+
+            try {
+                const formData = new FormData();
+                formData.append('file', fileInput.files[0]);
+
+                const response = await fetch('/process-csv', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    status.textContent = 'Processing completed!';
+                    results.textContent = JSON.stringify(data.results, null, 2);
+                } else {
+                    throw new Error(data.message || 'Processing failed');
+                }
+            } catch (error) {
+                status.textContent = 'Error!';
+                results.innerHTML = `<div class="error">${error.message}</div>`;
+            }
+        });
+    </script>
+</body>
+</html> 
