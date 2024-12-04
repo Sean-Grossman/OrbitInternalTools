@@ -1,6 +1,14 @@
 const axios = require('axios');
 const logger = require('../utils/logger');
 
+/**
+ * Service for handling LinkedIn API interactions
+ * Flow:
+ * 1. Receives LinkedIn profile URL
+ * 2. Extracts username from URL
+ * 3. Makes API request to LinkedIn API
+ * 4. Returns profile data including profile picture URL
+ */
 class LinkedinService {
     constructor() {
         this.api = axios.create({

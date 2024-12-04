@@ -3,7 +3,17 @@ const axios = require('axios');
 const path = require('path');
 const fs = require('fs').promises;
 const logger = require('../utils/logger');
+const imagineApiService = require('./imagineApiService');
 
+/**
+ * Service for processing profile images and generating pixel art
+ * Flow:
+ * 1. Downloads profile picture from LinkedIn URL
+ * 2. Processes original image (resizing, optimization)
+ * 3. Sends image to Discord for pixel art generation
+ * 4. Downloads resulting pixel art
+ * 5. Saves both original and pixel art versions
+ */
 class ImageProcessingService {
     constructor() {
         this.outputDir = path.join(process.cwd(), 'processed_images');
@@ -48,8 +58,8 @@ class ImageProcessingService {
             // Validate image before processing
             await sharp(imageBuffer).metadata();
             
+            // Process original image
             const outputPath = path.join(this.outputDir, `${filename}.png`);
-            
             await sharp(imageBuffer)
                 .resize(800, 800, {
                     fit: 'contain',
@@ -62,8 +72,19 @@ class ImageProcessingService {
                 })
                 .toFile(outputPath);
 
-            logger.info(`Image processed and saved to: ${outputPath}`);
-            return outputPath;
+            // Generate pixel art version
+            const pixelArtUrl = await imagineApiService.generatePixelArt(imageBuffer, filename);
+            
+            // Download and save pixel art
+            const pixelArtBuffer = await this.downloadImage(pixelArtUrl);
+            const pixelArtPath = path.join(this.outputDir, `${filename}_pixel.png`);
+            await sharp(pixelArtBuffer).toFile(pixelArtPath);
+
+            logger.info(`Images processed and saved: ${outputPath}, ${pixelArtPath}`);
+            return {
+                originalPath: outputPath,
+                pixelArtPath: pixelArtPath
+            };
 
         } catch (error) {
             logger.error('Error processing profile picture:', error);

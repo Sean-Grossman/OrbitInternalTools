@@ -1,13 +1,10 @@
+require('dotenv').config();
 const express = require('express');
-const dotenv = require('dotenv');
 const errorHandler = require('./middleware/errorHandler');
 const logger = require('./utils/logger');
 const multer = require('multer');
 const processController = require('./controllers/processController');
 const path = require('path');
-
-// Load environment variables
-dotenv.config();
 
 const app = express();
 

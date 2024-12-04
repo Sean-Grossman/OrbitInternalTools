@@ -3,6 +3,20 @@ const linkedinService = require('../services/linkedinService');
 const imageProcessingService = require('../services/imageProcessingService');
 const logger = require('../utils/logger');
 
+/**
+ * Controller managing the entire profile processing flow
+ * Complete Flow:
+ * 1. Receives CSV file with LinkedIn URLs
+ * 2. For each URL:
+ *    a. Validates LinkedIn URL format
+ *    b. Fetches profile data from LinkedIn API
+ *    c. Downloads profile picture
+ *    d. Processes original image
+ *    e. Sends to Discord for pixel art generation
+ *    f. Downloads and saves generated pixel art
+ * 3. Streams progress updates to client
+ * 4. Returns final results with all processed images
+ */
 class ProcessController {
     async processProfiles(req, res, next) {
         try {
@@ -60,7 +74,8 @@ class ProcessController {
                         return {
                             url: profile.linkedinUrl,
                             status: 'success',
-                            processedImagePath,
+                            originalImagePath: processedImagePath.originalPath,
+                            pixelArtPath: processedImagePath.pixelArtPath,
                             profilePicture: profileData.profilePicture
                         };
 
