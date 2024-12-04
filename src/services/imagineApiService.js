@@ -87,22 +87,22 @@ class ImagineApiService {
                 firstBytes: imageBuffer.slice(0, 20)
             });
 
-            // First, upload the file to the channel
-            const uploadPayload = {
-                content: 'Uploading image...',
-                files: [{
-                    name: `${name}.png`,
-                    data: imageBuffer.toString('base64')
-                }]
-            };
-
-            console.log('Upload Payload:', {
-                contentLength: uploadPayload.content.length,
-                fileName: uploadPayload.files[0].name,
-                dataLength: uploadPayload.files[0].data.length
+            // First, upload the file to the channel using FormData
+            const formData = new FormData();
+            formData.append('content', 'Uploading image...');
+            formData.append('file', imageBuffer, {
+                filename: `${name}.png`,
+                contentType: 'image/png'
             });
 
-            const uploadResponse = await this.api.post(`/channels/${this.channelId}/messages`, uploadPayload);
+            console.log('FormData Payload:', {
+                contentLength: formData.getLengthSync(),
+                fileName: `${name}.png`
+            });
+
+            const uploadResponse = await this.api.post(`/channels/${this.channelId}/messages`, formData, {
+                headers: formData.getHeaders()
+            });
 
             console.log('Full Upload Response:', {
                 status: uploadResponse.status,
