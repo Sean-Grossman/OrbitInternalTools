@@ -72,18 +72,21 @@ class ImageProcessingService {
                 })
                 .toFile(outputPath);
 
-            // Generate pixel art version
-            const pixelArtUrl = await imagineApiService.generatePixelArt(imageBuffer, filename);
-            
-            // Download and save pixel art
-            const pixelArtBuffer = await this.downloadImage(pixelArtUrl);
-            const pixelArtPath = path.join(this.outputDir, `${filename}_pixel.png`);
-            await sharp(pixelArtBuffer).toFile(pixelArtPath);
+            // console.log('outputPath', outputPath);
 
-            logger.info(`Images processed and saved: ${outputPath}, ${pixelArtPath}`);
+            // console.log('filename', filename);
+            // // Generate pixel art version
+            // const pixelArtUrl = await imagineApiService.generatePixelArt(filename, filename);
+            
+            // // Download and save pixel art
+            // const pixelArtBuffer = await this.downloadImage(pixelArtUrl);
+            // const pixelArtPath = path.join(this.outputDir, `${filename}_pixel.png`);
+            // await sharp(pixelArtBuffer).toFile(pixelArtPath);
+
+            // logger.info(`Images processed and saved: ${outputPath}, ${pixelArtPath}`);
             return {
                 originalPath: outputPath,
-                pixelArtPath: pixelArtPath
+                // pixelArtPath: pixelArtPath
             };
 
         } catch (error) {

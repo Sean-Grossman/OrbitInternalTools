@@ -15,19 +15,24 @@ class CsvService {
                     .on('data', (data) => {
                         logger.info('Processing CSV row:', data);
                         
-                        // Check if the URL exists in any of the columns
-                        const url = Object.values(data).find(value => 
-                            value && value.includes('linkedin.com/in/')
-                        );
+                        // Check if the row has a status of 'failed'
+                        if (!data.profilePicture || data.profilePicture === '') {
+                            // Check if the URL exists in any of the columns
+                            const url = Object.values(data).find(value => 
+                                value && value.includes('linkedin.com/in/')
+                            );
 
-                        if (url) {
-                            results.push({
-                                linkedinUrl: url,
-                                status: 'pending'
-                            });
-                            logger.info('Added URL:', url);
+                            if (url) {
+                                results.push({
+                                    linkedinUrl: url,
+                                    status: 'pending'
+                                });
+                                logger.info('Added URL:', url);
+                            } else {
+                                logger.warn('No LinkedIn URL found in row:', data);
+                            }
                         } else {
-                            logger.warn('No LinkedIn URL found in row:', data);
+                            logger.info('Skipping row with non-failed status:', data);
                         }
                     })
                     .on('end', () => {

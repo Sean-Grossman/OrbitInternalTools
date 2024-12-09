@@ -2,6 +2,7 @@ const csvService = require('../services/csvService');
 const linkedinService = require('../services/linkedinService');
 const imageProcessingService = require('../services/imageProcessingService');
 const logger = require('../utils/logger');
+const path = require('path');
 
 /**
  * Controller managing the entire profile processing flow
@@ -75,7 +76,7 @@ class ProcessController {
                             url: profile.linkedinUrl,
                             status: 'success',
                             originalImagePath: processedImagePath.originalPath,
-                            pixelArtPath: processedImagePath.pixelArtPath,
+                            // pixelArtPath: processedImagePath.pixelArtPath,
                             profilePicture: profileData.profilePicture
                         };
 

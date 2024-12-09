@@ -1,6 +1,8 @@
 const axios = require('axios');
 const FormData = require('form-data');
 const logger = require('../utils/logger');
+const AWS = require('aws-sdk');
+const fs = require('fs');
 
 /**
  * Service for interacting with Discord's API for image generation
@@ -75,76 +77,177 @@ class ImagineApiService {
      * @param {string} name - Name for the generated file
      * @returns {Promise<string>} URL of the generated pixel art
      */
-    async generatePixelArt(imageBuffer, name) {
+    async generatePixelArt(imageName, name) {
         try {
             await this.waitForRateLimit();
             logger.info(`Generating pixel art for ${name}`);
-            
-            // Log the image buffer details
-            console.log('Image Buffer Details:', {
-                size: imageBuffer.length,
-                isBuffer: Buffer.isBuffer(imageBuffer),
-                firstBytes: imageBuffer.slice(0, 20)
+
+            // const data = {
+            //     prompt: `Create a full-body pixel-art sprite of a friend whose image is attached, designed as a character inspired by classic 1980s 2D Mario games. The character should be depicted from head to toe in a classic Mario running pose, with all limbs fully visible, including arms, legs, and feet. The design must include bright colors, a cartoonish, expressive face, overalls, a hat, and any unique traits from the provided photo (such as specific hair color or accessories). Position the character facing to the right, with arms and legs extended in a dynamic running motion, and wearing black sneakers. Ensure the entire body is fully visible in a retro 8-bit pixel art style, with no missing or cropped elements. Picture: https://orbit-bucket.sfo3.cdn.digitaloceanspaces.com/${process.env.DIGITAL_OCEAN_SPACES_FOLDER}/${imageName}`,
+            // };
+
+            const data = {
+                prompt: `https://cdn.midjourney.com/u/e99b14c4-68c3-4b0c-b736-8b629f5a8b22/30bed6d6b2c37085176ac9bcd43bc47dc17b04b2272a4ef8f4a687b2030bff0a.png https://cdn.midjourney.com/u/e99b14c4-68c3-4b0c-b736-8b629f5a8b22/f8fb0dbb96e615c7e753b1258ef2f1773be66d132368b27778296e021e5eb51b.jpg Create a full-body pixel-art sprite of a friend whose image is attached, designed as a character inspired by classic 1980s 2D Mario games. Place the character in a vibrant Super Mario Land-inspired background as a cover photo, incorporating iconic elements such as pixelated clouds, green pipes, brick platforms, and a bright blue sky. The character should be depicted from head to toe in a side-facing pose, standing out in a classic Mario running motion, with all limbs fully visible, including arms, legs, and feet. The design must include bright colors, a cartoonish, expressive face, overalls, a hat, and any unique traits from the provided photo (such as specific hair color or accessories). Position the character running to the right, with arms and legs extended, and wearing black sneakers. Ensure the character and background are cohesive in a retro 8-bit pixel art style, with the entire character and both feet fully visible(Important!!), and no cropped or missing elements. --cref https://orbit-bucket.sfo3.cdn.digitaloceanspaces.com/new_images/${imageName} --v 6.1`,
+            };
+
+            const response = await fetch('https://cl.imagineapi.dev/items/images/', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${process.env.IMAGINE_API_TOKEN}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
             });
 
-            // First, upload the file to the channel using FormData
-            const formData = new FormData();
-            formData.append('content', 'Uploading image...');
-            formData.append('file', imageBuffer, {
-                filename: `${name}.png`,
-                contentType: 'image/png'
-            });
+            const responseData = await response.json();
+            console.log(responseData);
 
-            console.log('FormData Payload:', {
-                contentLength: formData.getLengthSync(),
-                fileName: `${name}.png`
-            });
-
-            const uploadResponse = await this.api.post(`/channels/${this.channelId}/messages`, formData, {
-                headers: formData.getHeaders()
-            });
-
-            console.log('Full Upload Response:', {
-                status: uploadResponse.status,
-                statusText: uploadResponse.statusText,
-                headers: uploadResponse.headers,
-                data: uploadResponse.data,
-                attachments: uploadResponse.data?.attachments
-            });
-
-            if (!uploadResponse.data?.attachments?.[0]?.url) {
-                console.error('Upload failed with response:', uploadResponse.data);
-                throw new Error('Failed to upload image');
+            if (!responseData?.data?.id) {
+                throw new Error(`No image URL received from Imagine Dev API, ${JSON.stringify(data)}`);
             }
 
-            // Then, create the imagine command
-            const interactionResponse = await this.api.post(`/interactions`, {
-                type: 2,
-                application_id: process.env.DISCORD_APPLICATION_ID,
-                channel_id: this.channelId,
-                data: {
-                    name: 'imagine',
-                    type: 1,
-                    options: [{
-                        type: 3,
-                        name: 'prompt',
-                        value: 'Create a full-body pixel-art sprite of a friend whose image is attached, designed as a character inspired by classic 1980s 2D Mario games. The character should be depicted from head to toe in a classic Mario running pose, with all limbs fully visible, including arms, legs, and feet. The design must include bright colors, a cartoonish, expressive face, overalls, a hat, and any unique traits from the provided photo (such as specific hair color or accessories). Position the character facing to the right, with arms and legs extended in a dynamic running motion, and wearing black sneakers. Ensure the entire body is fully visible in a retro 8-bit pixel art style, with no missing or cropped elements.'
-                    }, {
-                        type: 11,
-                        name: 'image',
-                        value: uploadResponse.data.attachments[0].url
-                    }]
+            const imageId = responseData.data.id;
+
+            // Use a promise to wait for the image generation to complete
+            const imageUrl = await new Promise((resolve, reject) => {
+                const intervalId = setInterval(async () => {
+                    try {
+                        console.log('Checking image details');
+                        const statusResponse = await fetch(`https://cl.imagineapi.dev/items/images/${imageId}`, {
+                            method: 'GET',
+                            headers: {
+                                'Authorization': `Bearer ${process.env.IMAGINE_API_TOKEN}`,
+                                'Content-Type': 'application/json'
+                            }
+                        });
+
+                        const statusData = await statusResponse.json();
+                        console.log('Image status', statusData.data.status);
+                        if (statusData.data.status === 'completed') {
+                            clearInterval(intervalId);
+                            console.log('Completed image details', statusData.data.url);
+                            const upscaledUrls = statusData.data.upscaled_urls;
+                            const uploadedUrls = [];
+
+                            for (let i = 0; i < upscaledUrls.length; i++) {
+                                const upscaleUrl = upscaledUrls[i];
+                                console.log('Upscale URL', upscaleUrl);
+                                const uploadedUrl = await this.uploadToLocalFolder(upscaleUrl, imageName, i);
+                                // const uploadedUrl = upscaleUrl;
+                                uploadedUrls.push(uploadedUrl);
+                                // await fs.appendFile('generated_images', `${uploadedUrl}\n`, 'utf8');
+                            }
+
+                            resolve(uploadedUrls);
+                        } else if (statusData.data.status === 'failed') {
+                            clearInterval(intervalId);
+                            reject(new Error('Image generation failed'));
+                        } else {
+                            console.log("Image is not finished generating. Status: ", statusData.data.status);
+                        }
+                    } catch (error) {
+                        console.error('Error getting updates', error);
+                        clearInterval(intervalId);
+                        reject(error);
+                    }
+                }, 5000); // every 5 seconds
+            });
+
+            return imageUrl;
+
+        } catch (error) {
+            console.error('Error generating image:', error);
+            throw new Error(`Failed to generate image: ${error.message}`);
+        }
+    }
+
+    async getImageById(imageId) {
+        try {
+            const response = await fetch(`https://cl.imagineapi.dev/items/images/${imageId}`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${process.env.IMAGINE_API_TOKEN}`, // <<<< TODO: remember to change this
+                    'Content-Type': 'application/json'
                 }
             });
 
-            if (!interactionResponse.data?.data?.attachments?.[0]?.url) {
-                throw new Error('No image URL received from Discord API');
+            const responseData = await response.json();
+            console.log(responseData);
+
+            if (!responseData?.data?.url) {
+                throw new Error('No image URL received from Imagine Dev API');
             }
 
-            return interactionResponse.data.data.attachments[0].url;
+            return responseData.data.url;
         } catch (error) {
-            logger.error('Error generating pixel art:', error.response?.data || error.message);
-            throw new Error(`Failed to generate pixel art: ${error.message}`);
+            console.error('Error retrieving image:', error);
+            throw new Error(`Failed to retrieve image: ${error.message}`);
+        }
+    }
+
+    async uploadToDigitalOceanSpaces(imageUrl, name, imageIndex) {
+        try {
+            const spacesEndpoint = new AWS.Endpoint(process.env.DIGITAL_OCEAN_SPACES_ENDPOINT);
+            const s3 = new AWS.S3({
+                endpoint: spacesEndpoint,
+                accessKeyId: process.env.DIGITAL_OCEAN_SPACES_ACCESS_KEY,
+                secretAccessKey: process.env.DIGITAL_OCEAN_SPACES_SECRET,
+                region: process.env.DIGITAL_OCEAN_SPACES_REGION
+            });
+
+            const buckets = await s3.listBuckets().promise();
+            console.log('S3 Buckets:', buckets.Buckets);
+
+            // Use axios to download the image
+            const response = await axios.get(imageUrl, { responseType: 'arraybuffer' });
+            const buffer = response.data; // This is the image buffer
+
+            const params = {
+                Bucket: process.env.DIGITAL_OCEAN_SPACES_BUCKET,
+                Key: `ecom-ai-images/${name.split('.')[0]}/${name}_${imageIndex + 1}`,
+                Body: buffer,
+                ACL: 'public-read',
+                ContentType: 'image/png'
+            };
+
+            console.log('Uploading image to DigitalOcean Spaces:', params);
+
+            console.log('Starting upload...');
+            await s3.upload(params).promise();
+            console.log('Image uploaded to DigitalOcean Spaces');
+
+            // Return the URL of the uploaded image
+            return `https://${process.env.DIGITAL_OCEAN_SPACES_BUCKET}.${process.env.DIGITAL_OCEAN_SPACES_ENDPOINT}/ecom-ai-images/${name.split('.')[0]}/${name}_${imageIndex}.png`;
+        } catch (error) {
+            console.error('Error uploading image to DigitalOcean Spaces:', error);
+            throw new Error(`Failed to upload image: ${error.message}`);
+        }
+    }
+
+
+    async uploadToLocalFolder(imageUrl, name, imageIndex) {
+        try {
+            // Use axios to download the image
+            const response = await axios.get(imageUrl, { responseType: 'arraybuffer' });
+            const buffer = response.data; // This is the image buffer
+
+            // Define the path where the image will be saved
+            const dirPath = `generated_images/${name.split('.')[0]}`;
+            const filePath = `${dirPath}/${name.split('.')[0]}_${imageIndex + 1}.png`;
+
+            // Ensure the directory exists
+            fs.mkdirSync(dirPath, { recursive: true });
+
+            // Write the image buffer to the file system
+            fs.writeFileSync(filePath, buffer);
+
+            console.log('Image saved to local folder:', filePath);
+
+            // Return the local file path
+            return filePath;
+        } catch (error) {
+            console.error('Error saving image to local folder:', error);
+            throw new Error(`Failed to save image: ${error.message}`);
         }
     }
 }

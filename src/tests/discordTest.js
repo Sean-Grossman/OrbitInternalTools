@@ -13,50 +13,31 @@ async function testDiscordIntegration() {
         await testConfig.validateDiscordToken();
         logger.info('Discord token validated');
 
-        // Create test directory if it doesn't exist
-        const testDir = path.join(__dirname, 'test-assets');
-        await fs.mkdir(testDir, { recursive: true });
-        logger.info('Test directory created/verified');
+        // // Create test directory if it doesn't exist
+        // const testDir = path.join(__dirname, 'test-assets');
+        // await fs.mkdir(testDir, { recursive: true });
+        // logger.info('Test directory created/verified');
 
-        // Create a simple test image if it doesn't exist
-        const testImagePath = path.join(testDir, 'testImage.jpg');
+        // Process each image in the processed_images folder
+        const processedImagesDir = path.join(__dirname, '../../test_images_2');
+        const files = await fs.readdir(processedImagesDir);
+
+        console.log(files);
         
-        // Check if test image exists, if not create one
-        try {
-            await fs.access(testImagePath);
-            logger.info('Found existing test image');
-        } catch {
-            logger.info('Downloading sample image...');
-            try {
-                const response = await axios.get(process.env.TEST_IMAGE_URL || 'https://media.licdn.com/dms/image/v2/D4E03AQGNQrONVbXujQ/profile-displayphoto-shrink_800_800/profile-displayphoto-shrink_800_800/0/1721237521273?e=1738800000&v=beta&t=e5g3zAmn8eLASGVSP1721c7pLoCn4pPYh1t7g0-S3WM', { 
-                    responseType: 'arraybuffer',
-                    timeout: 10000
-                });
-                logger.info('Sample image downloaded successfully');
-                
-                await fs.writeFile(testImagePath, response.data);
-                logger.info('Sample image saved to disk');
-            } catch (downloadError) {
-                logger.error('Error downloading sample image:', downloadError);
-                throw new Error(`Failed to download sample image: ${downloadError.message}`);
-            }
+        // Till  (79, 200)
+        for (const file of files) {
+            logger.info(`Processing image: ${file}`);
+
+            // Test pixel art generation
+            const result = await imagineApiService.generatePixelArt(
+                file,
+                file
+            );
+
+            logger.info('Generated pixel art URL:', result);
         }
 
-        // Read test image
-        logger.info('Reading test image from disk');
-        const imageBuffer = await fs.readFile(testImagePath);
-        logger.info(`Image buffer loaded, size: ${imageBuffer.length}`);
-
-        // Test pixel art generation
-        const result = await imagineApiService.generatePixelArt(
-            imageBuffer,
-            'test_profile'
-        );
-
-        logger.info('Test completed successfully');
-        logger.info('Generated pixel art URL:', result);
-
-        return result;
+        logger.info('All images processed successfully');
     } catch (error) {
         logger.error('Test failed:', error);
         throw error;
