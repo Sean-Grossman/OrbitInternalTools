@@ -62,6 +62,13 @@
             text-align: center;
             margin-top: 5px;
         }
+        .highlight {
+            color: #0077b5; /* LinkedIn blue */
+            font-weight: bold;
+            background-color: #e0f7fa; /* Light cyan background */
+            padding: 5px;
+            border-radius: 4px;
+        }
     </style>
 </head>
 <body>
@@ -71,6 +78,7 @@
         <div class="upload-form">
             <h2>Upload CSV File</h2>
             <p>Please upload a CSV file containing LinkedIn profile URLs. The file should have a column named 'linkedinUrl'.</p>
+            <p class="highlight">You don't need to stay; we'll send the download link to Slack once it's completed.</p>
             
             <form id="uploadForm" enctype="multipart/form-data">
                 <div class="file-input">

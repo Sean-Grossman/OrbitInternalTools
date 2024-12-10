@@ -190,10 +190,7 @@ class ImagineApiService {
                 secretAccessKey: process.env.DIGITAL_OCEAN_SPACES_SECRET,
                 region: process.env.DIGITAL_OCEAN_SPACES_REGION
             });
-
-            const buckets = await s3.listBuckets().promise();
-            console.log('S3 Buckets:', buckets.Buckets);
-
+            
             // Use axios to download the image
             const response = await axios.get(imageUrl, { responseType: 'arraybuffer' });
             const buffer = response.data; // This is the image buffer

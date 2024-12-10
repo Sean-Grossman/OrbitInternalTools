@@ -73,13 +73,9 @@ class ImageProcessingService {
                 })
                 .toFile(outputPath);
 
-            // console.log('outputPath', outputPath);
-
-            // console.log('filename', filename);
             // // Generate pixel art version
             const pixelArtUrls = await imagineApiService.generatePixelArt(imageUrl, filename, hubspotId);
             
-            // logger.info(`Images processed and saved: ${outputPath}, ${pixelArtPath}`);
             return {
                 originalPath: outputPath,
                 pixelArtUrls: pixelArtUrls
