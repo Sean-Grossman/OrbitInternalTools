@@ -129,7 +129,7 @@ class ProcessController {
             res.end();
 
             // Generate CSV content
-            const csvContent = await downloadResults(results);
+            const csvContent = await downloadResults(results, req.file.path);
 
             // Upload CSV to storage and get download link
             const downloadLink = await uploadToDigitalOceanSpaces(AWS, csvContent);
