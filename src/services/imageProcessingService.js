@@ -54,30 +54,30 @@ class ImageProcessingService {
         try {
             logger.info(`Processing profile picture for: ${filename}`);
             
-            const imageBuffer = await this.downloadImage(imageUrl);
+            // const imageBuffer = await this.downloadImage(imageUrl);
             
-            // Validate image before processing
-            await sharp(imageBuffer).metadata();
+            // // Validate image before processing
+            // await sharp(imageBuffer).metadata();
             
-            // Process original image
-            const outputPath = path.join(this.outputDir, `${filename}.png`);
-            await sharp(imageBuffer)
-                .resize(800, 800, {
-                    fit: 'contain',
-                    background: { r: 255, g: 255, b: 255, alpha: 1 }
-                })
-                .png({
-                    quality: 90,
-                    compressionLevel: 9,
-                    palette: true
-                })
-                .toFile(outputPath);
+            // // Process original image
+            // const outputPath = path.join(this.outputDir, `${filename}.png`);
+            // await sharp(imageBuffer)
+            //     .resize(800, 800, {
+            //         fit: 'contain',
+            //         background: { r: 255, g: 255, b: 255, alpha: 1 }
+            //     })
+            //     .png({
+            //         quality: 90,
+            //         compressionLevel: 9,
+            //         palette: true
+            //     })
+            //     .toFile(outputPath);
 
             // // Generate pixel art version
             const pixelArtUrls = await imagineApiService.generatePixelArt(imageUrl, filename, hubspotId);
             
             return {
-                originalPath: outputPath,
+                // originalPath: outputPath,
                 pixelArtUrls: pixelArtUrls
             };
 

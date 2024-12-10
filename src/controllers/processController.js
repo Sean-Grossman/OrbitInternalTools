@@ -73,6 +73,7 @@ class ProcessController {
                 logger.info(`Processing profile ${i + 1} of ${totalProfiles}`);
 
                 try {
+                    // Validate LinkedIn URL
                     if (!await linkedinService.validateUrl(profile.linkedinUrl)) {
                         results.push({
                             url: profile.linkedinUrl,
@@ -82,8 +83,14 @@ class ProcessController {
                         continue;
                     }
 
-                    const profileData = await linkedinService.getProfileData(profile.linkedinUrl);
+                    let profileData = profile;
 
+                    // If profile picture is not available, fetch from LinkedIn
+                    if(!profileData.profilePicture) {
+                        profileData = await linkedinService.getProfileData(profile.linkedinUrl);
+                    }
+
+                    // If profile picture is still not available, skip the profile
                     if (!profileData.profilePicture) {
                         results.push({
                             url: profile.linkedinUrl,
@@ -93,6 +100,7 @@ class ProcessController {
                         continue;
                     }
 
+                    // Process profile picture
                     const processedImagePath = await imageProcessingService.processProfilePicture(
                         profileData.profilePicture,
                         profileData.fullName.replace(/\s+/g, '_'),
@@ -102,7 +110,6 @@ class ProcessController {
                     results.push({
                         url: profile.linkedinUrl,
                         status: 'success',
-                        originalImagePath: processedImagePath.originalPath,
                         pixelArtUrls: processedImagePath.pixelArtUrls,
                         profilePicture: profileData.profilePicture
                     });

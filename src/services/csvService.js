@@ -17,16 +17,20 @@ class CsvService {
                         logger.info('Processing CSV row:', data);
                         
                         // Check if the row has a status of 'failed'
-                        if (!data.profilePicture || data.profilePicture === '' && data['record id - contact']) {
+                        if (data['record id - contact']) {
                             // Check if the URL exists in any of the columns
                             const url = data.linkedinurl.includes('linkedin.com/in/') ? data.linkedinurl : null;
                             const hubspotId = data['record id - contact'];
+                            const profilePicture = data['profilepicture'];
+                            const fullName = ((data['first name'] || '') + ' ' + (data['last name'] || '')).trim();
 
                             if (url) {
                                 results.push({
                                     linkedinUrl: url,
                                     status: 'pending',
-                                    hubspotId: hubspotId
+                                    hubspotId: hubspotId,
+                                    profilePicture: profilePicture,
+                                    fullName: fullName
                                 });
                                 logger.info('Added URL:', url);
                             } else {
