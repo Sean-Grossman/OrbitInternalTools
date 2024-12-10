@@ -86,7 +86,7 @@ class ImagineApiService {
             if (imageFolderExists) {
                 console.log('Image folder already exists on DigitalOcean Spaces');
                 const images = await this.getallImagesFromDigitalOceanSpaces(hubspotId);
-                return images.map(image => `${process.env.DIGITAL_OCEAN_ORIGIN_ENDPOINT}/${image.Key}`);
+                return images.map(image => `${process.env.DIGITAL_OCEAN_CDN_ENDPOINT}/${image.Key}`);
             }
 
             await this.waitForRateLimit();
@@ -264,7 +264,7 @@ class ImagineApiService {
             console.log('Image uploaded to DigitalOcean Spaces');
 
             // Return the URL of the uploaded image
-            return `https://${process.env.DIGITAL_OCEAN_ORIGIN_ENDPOINT}/ecom-generated-images/${hubspotId}/${hubspotId}_${imageIndex + 1}`;
+            return `https://${process.env.DIGITAL_OCEAN_CDN_ENDPOINT}/ecom-generated-images/${hubspotId}/${hubspotId}_${imageIndex + 1}`;
         } catch (error) {
             console.error('Error uploading image to DigitalOcean Spaces:', error);
             throw new Error(`Failed to upload image: ${error.message}`);
