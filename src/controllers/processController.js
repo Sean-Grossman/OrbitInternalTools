@@ -66,6 +66,8 @@ class ProcessController {
             const totalProfiles = profiles.length;
             const results = [];
 
+            console.log('profiles', profiles);
+
             logger.info(`Processing ${totalProfiles} profiles sequentially`);
 
             for (let i = 0; i < profiles.length; i++) {
@@ -87,6 +89,7 @@ class ProcessController {
 
                     // If profile picture is not available, fetch from LinkedIn
                     if(!profileData.profilePicture) {
+                        console.log('Fetching profile data from LinkedIn for:', profile.linkedinUrl);
                         profileData = await linkedinService.getProfileData(profile.linkedinUrl);
                     }
 

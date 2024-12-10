@@ -28,6 +28,7 @@ async function downloadResults(results, existingCsvPath) {
                 existingRow['generatedArt2'] = result.pixelArtUrls && result.pixelArtUrls.length > 1 ? result.pixelArtUrls[1].replace(/^https:\/\/https:\/\//, 'https://') || '' : '';
                 existingRow['generatedArt3'] = result.pixelArtUrls && result.pixelArtUrls.length > 2 ? result.pixelArtUrls[2].replace(/^https:\/\/https:\/\//, 'https://') || '' : '';
                 existingRow['generatedArt4'] = result.pixelArtUrls && result.pixelArtUrls.length > 3 ? result.pixelArtUrls[3].replace(/^https:\/\/https:\/\//, 'https://') || '' : '';
+                existingRow['profilePicture'] = result.profilePicture || '';
             }
         });
 
