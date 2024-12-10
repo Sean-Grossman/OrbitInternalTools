@@ -66,8 +66,6 @@ class ProcessController {
             const totalProfiles = profiles.length;
             const results = [];
 
-            console.log('profiles', profiles);
-
             logger.info(`Processing ${totalProfiles} profiles sequentially`);
 
             for (let i = 0; i < profiles.length; i++) {

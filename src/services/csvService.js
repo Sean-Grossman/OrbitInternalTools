@@ -17,7 +17,7 @@ class CsvService {
                         logger.info('Processing CSV row:', data);
                         
                         // Check if the row has a status of 'failed'
-                        if (data['record id - contact']) {
+                        if (data && data['profilepicture'] && data['record id - contact']) {
                             // Check if the URL exists in any of the columns
                             const url = data.linkedinurl.includes('linkedin.com/in/') ? data.linkedinurl : null;
                             const hubspotId = data['record id - contact'];
