@@ -110,21 +110,6 @@ class ProcessController {
                         status: 'failed',
                         error: error.message
                     });
-
-                    // Send error report to Slack
-                    try {
-                        const slackAppInstance = new App({
-                            token: process.env.SLACK_BOT_TOKEN,
-                            signingSecret: process.env.SLACK_SIGNING_SECRET,
-                        });
-
-                        await slackAppInstance.client.chat.postMessage({
-                            channel: 'C0851R0H5K2',
-                            text: `*Error Processing Profile* :x:\n\n*LinkedIn URL:* \`${profile.linkedinUrl}\`\n*Error:* \`${error.message}\``,
-                        });
-                    } catch (slackError) {
-                        console.error('Error sending error report to Slack:', slackError);
-                    }
                 }
 
                 processedCount++;

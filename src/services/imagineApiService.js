@@ -80,6 +80,15 @@ class ImagineApiService {
     async generatePixelArt(imageLink, name, hubspotId) {
         console.log('generatePixelArt', imageLink, name, hubspotId);
         try {
+
+            const imageFolderExists = await this.checkIfImageFolderExistsOnDigitalOceanSpaces(hubspotId); 
+
+            if (imageFolderExists) {
+                console.log('Image folder already exists on DigitalOcean Spaces');
+                const images = await this.getallImagesFromDigitalOceanSpaces(hubspotId);
+                return images.map(image => `${process.env.DIGITAL_OCEAN_ORIGIN_ENDPOINT}/${image.Key}`);
+            }
+
             await this.waitForRateLimit();
             logger.info(`Generating pixel art for ${name}`);
 
@@ -157,6 +166,51 @@ class ImagineApiService {
         }
     }
 
+    async getallImagesFromDigitalOceanSpaces(hubspotId) {
+        const s3 = new AWS.S3({
+            endpoint: new AWS.Endpoint(process.env.DIGITAL_OCEAN_SPACES_ENDPOINT),
+            accessKeyId: process.env.DIGITAL_OCEAN_SPACES_ACCESS_KEY,
+            secretAccessKey: process.env.DIGITAL_OCEAN_SPACES_SECRET,
+            region: process.env.DIGITAL_OCEAN_SPACES_REGION
+        });
+
+        const params = {
+            Bucket: process.env.DIGITAL_OCEAN_SPACES_BUCKET,
+            Prefix: `ecom-generated-images/${hubspotId}/`
+        };
+
+        try {
+            const data = await s3.listObjectsV2(params).promise();
+            console.log('data', data);
+            return data.Contents; // Return the image data      
+        } catch (error) {
+            console.error('Error retrieving image from DigitalOcean Spaces:', error);
+            throw new Error(`Failed to retrieve image: ${error.message}`);
+        }
+    }
+
+    async checkIfImageFolderExistsOnDigitalOceanSpaces(hubspotId) {
+        const s3 = new AWS.S3({
+            endpoint: new AWS.Endpoint(process.env.DIGITAL_OCEAN_SPACES_ENDPOINT),
+            accessKeyId: process.env.DIGITAL_OCEAN_SPACES_ACCESS_KEY,
+            secretAccessKey: process.env.DIGITAL_OCEAN_SPACES_SECRET,
+            region: process.env.DIGITAL_OCEAN_SPACES_REGION
+        });
+
+        const params = {
+            Bucket: process.env.DIGITAL_OCEAN_SPACES_BUCKET,
+            Prefix: `ecom-generated-images/${hubspotId}/`
+        };
+
+        try {
+            const data = await s3.listObjectsV2(params).promise();
+            return data.Contents.length > 0; // Check if there are any objects in the folder
+        } catch (error) {
+            console.error('Error checking folder existence on DigitalOcean Spaces:', error);
+            throw new Error(`Failed to check folder existence: ${error.message}`);
+        }
+    }
+
     async getImageById(imageId) {
         try {
             const response = await fetch(`https://cl.imagineapi.dev/items/images/${imageId}`, {
@@ -190,7 +244,7 @@ class ImagineApiService {
                 secretAccessKey: process.env.DIGITAL_OCEAN_SPACES_SECRET,
                 region: process.env.DIGITAL_OCEAN_SPACES_REGION
             });
-            
+
             // Use axios to download the image
             const response = await axios.get(imageUrl, { responseType: 'arraybuffer' });
             const buffer = response.data; // This is the image buffer
