@@ -186,11 +186,16 @@
             if (!window.processedResults) return;
 
             const csvContent = [
-                ['LinkedIn URL', 'Profile Picture URL', 'Status'],
+                ['LinkedIn URL', 'Profile Picture URL', 'Status', 'Generated Image 1', 'Generated Image 2', 'Generated Image 3', 'Generated Image 4'],
                 ...window.processedResults.map(result => [
                     result.url,
                     result.status === 'success' ? result.profilePicture : '',
-                    result.status
+                    result.status,
+                    result.pixelArtUrls && result.pixelArtUrls.length > 0 ? result.pixelArtUrls[0].replace(/^https:\/\/https:\/\//, 'https://') || '' : '',
+                    result.pixelArtUrls && result.pixelArtUrls.length > 1 ? result.pixelArtUrls[1].replace(/^https:\/\/https:\/\//, 'https://') || '' : '',
+                    result.pixelArtUrls && result.pixelArtUrls.length > 2 ? result.pixelArtUrls[2].replace(/^https:\/\/https:\/\//, 'https://') || '' : '',
+                    result.pixelArtUrls && result.pixelArtUrls.length > 3 ? result.pixelArtUrls[3].replace(/^https:\/\/https:\/\//, 'https://') || '' : '',
+                    result.error.startsWith("Failed to process profile picture") ? "Failed to process profile picture" : result.error
                 ])
             ].map(row => row.join(',')).join('\n');
 

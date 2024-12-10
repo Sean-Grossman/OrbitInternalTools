@@ -77,17 +77,14 @@ class ImagineApiService {
      * @param {string} name - Name for the generated file
      * @returns {Promise<string>} URL of the generated pixel art
      */
-    async generatePixelArt(imageName, name) {
+    async generatePixelArt(imageLink, name, hubspotId) {
+        console.log('generatePixelArt', imageLink, name, hubspotId);
         try {
             await this.waitForRateLimit();
             logger.info(`Generating pixel art for ${name}`);
 
-            // const data = {
-            //     prompt: `Create a full-body pixel-art sprite of a friend whose image is attached, designed as a character inspired by classic 1980s 2D Mario games. The character should be depicted from head to toe in a classic Mario running pose, with all limbs fully visible, including arms, legs, and feet. The design must include bright colors, a cartoonish, expressive face, overalls, a hat, and any unique traits from the provided photo (such as specific hair color or accessories). Position the character facing to the right, with arms and legs extended in a dynamic running motion, and wearing black sneakers. Ensure the entire body is fully visible in a retro 8-bit pixel art style, with no missing or cropped elements. Picture: https://orbit-bucket.sfo3.cdn.digitaloceanspaces.com/${process.env.DIGITAL_OCEAN_SPACES_FOLDER}/${imageName}`,
-            // };
-
             const data = {
-                prompt: `https://cdn.midjourney.com/u/e99b14c4-68c3-4b0c-b736-8b629f5a8b22/30bed6d6b2c37085176ac9bcd43bc47dc17b04b2272a4ef8f4a687b2030bff0a.png https://cdn.midjourney.com/u/e99b14c4-68c3-4b0c-b736-8b629f5a8b22/f8fb0dbb96e615c7e753b1258ef2f1773be66d132368b27778296e021e5eb51b.jpg Create a full-body pixel-art sprite of a friend whose image is attached, designed as a character inspired by classic 1980s 2D Mario games. Place the character in a vibrant Super Mario Land-inspired background as a cover photo, incorporating iconic elements such as pixelated clouds, green pipes, brick platforms, and a bright blue sky. The character should be depicted from head to toe in a side-facing pose, standing out in a classic Mario running motion, with all limbs fully visible, including arms, legs, and feet. The design must include bright colors, a cartoonish, expressive face, overalls, a hat, and any unique traits from the provided photo (such as specific hair color or accessories). Position the character running to the right, with arms and legs extended, and wearing black sneakers. Ensure the character and background are cohesive in a retro 8-bit pixel art style, with the entire character and both feet fully visible(Important!!), and no cropped or missing elements. --cref https://orbit-bucket.sfo3.cdn.digitaloceanspaces.com/new_images/${imageName} --v 6.1`,
+                prompt: `https://cdn.midjourney.com/u/e99b14c4-68c3-4b0c-b736-8b629f5a8b22/30bed6d6b2c37085176ac9bcd43bc47dc17b04b2272a4ef8f4a687b2030bff0a.png https://cdn.midjourney.com/u/e99b14c4-68c3-4b0c-b736-8b629f5a8b22/f8fb0dbb96e615c7e753b1258ef2f1773be66d132368b27778296e021e5eb51b.jpg Create a full-body pixel-art sprite of a friend whose image is attached, designed as a character inspired by classic 1980s 2D Mario games. Place the character in a vibrant Super Mario Land-inspired background as a cover photo, incorporating iconic elements such as pixelated clouds, green pipes, brick platforms, and a bright blue sky. The character should be depicted from head to toe in a side-facing pose, standing out in a classic Mario running motion, with all limbs fully visible, including arms, legs, and feet. The design must include bright colors, a cartoonish, expressive face, overalls, a hat, and any unique traits from the provided photo (such as specific hair color or accessories). Position the character running to the right, with arms and legs extended, and wearing black sneakers. Ensure the character and background are cohesive in a retro 8-bit pixel art style, with the entire character and both feet fully visible(Important!!), and no cropped or missing elements. --cref ${imageLink} --v 6.1`,
             };
 
             const response = await fetch('https://cl.imagineapi.dev/items/images/', {
@@ -109,7 +106,7 @@ class ImagineApiService {
             const imageId = responseData.data.id;
 
             // Use a promise to wait for the image generation to complete
-            const imageUrl = await new Promise((resolve, reject) => {
+            const imageUrls = await new Promise((resolve, reject) => {
                 const intervalId = setInterval(async () => {
                     try {
                         console.log('Checking image details');
@@ -131,11 +128,9 @@ class ImagineApiService {
 
                             for (let i = 0; i < upscaledUrls.length; i++) {
                                 const upscaleUrl = upscaledUrls[i];
-                                console.log('Upscale URL', upscaleUrl);
-                                const uploadedUrl = await this.uploadToLocalFolder(upscaleUrl, imageName, i);
-                                // const uploadedUrl = upscaleUrl;
+                                console.log("Uploading image to DigitalOcean Spaces", upscaleUrl, hubspotId, i);
+                                const uploadedUrl = await this.uploadToDigitalOceanSpaces(upscaleUrl, hubspotId, i);
                                 uploadedUrls.push(uploadedUrl);
-                                // await fs.appendFile('generated_images', `${uploadedUrl}\n`, 'utf8');
                             }
 
                             resolve(uploadedUrls);
@@ -153,7 +148,8 @@ class ImagineApiService {
                 }, 5000); // every 5 seconds
             });
 
-            return imageUrl;
+            console.log('imageUrls', imageUrls);
+            return imageUrls;
 
         } catch (error) {
             console.error('Error generating image:', error);
@@ -185,7 +181,7 @@ class ImagineApiService {
         }
     }
 
-    async uploadToDigitalOceanSpaces(imageUrl, name, imageIndex) {
+    async uploadToDigitalOceanSpaces(imageUrl, hubspotId, imageIndex) {
         try {
             const spacesEndpoint = new AWS.Endpoint(process.env.DIGITAL_OCEAN_SPACES_ENDPOINT);
             const s3 = new AWS.S3({
@@ -204,7 +200,7 @@ class ImagineApiService {
 
             const params = {
                 Bucket: process.env.DIGITAL_OCEAN_SPACES_BUCKET,
-                Key: `ecom-ai-images/${name.split('.')[0]}/${name}_${imageIndex + 1}`,
+                Key: `ecom-generated-images/${hubspotId}/${hubspotId}_${imageIndex + 1}`,
                 Body: buffer,
                 ACL: 'public-read',
                 ContentType: 'image/png'
@@ -217,7 +213,7 @@ class ImagineApiService {
             console.log('Image uploaded to DigitalOcean Spaces');
 
             // Return the URL of the uploaded image
-            return `https://${process.env.DIGITAL_OCEAN_SPACES_BUCKET}.${process.env.DIGITAL_OCEAN_SPACES_ENDPOINT}/ecom-ai-images/${name.split('.')[0]}/${name}_${imageIndex}.png`;
+            return `https://${process.env.DIGITAL_OCEAN_ORIGIN_ENDPOINT}/ecom-generated-images/${hubspotId}/${hubspotId}_${imageIndex + 1}`;
         } catch (error) {
             console.error('Error uploading image to DigitalOcean Spaces:', error);
             throw new Error(`Failed to upload image: ${error.message}`);

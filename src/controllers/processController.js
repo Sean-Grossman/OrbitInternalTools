@@ -39,62 +39,59 @@ class ProcessController {
             const profiles = await csvService.processFile(req.file.path);
             const totalProfiles = profiles.length;
             const results = [];
-            const batchSize = 5;
 
-            logger.info(`Processing ${totalProfiles} profiles in batches of ${batchSize}`);
+            logger.info(`Processing ${totalProfiles} profiles sequentially`);
 
-            for (let i = 0; i < profiles.length; i += batchSize) {
-                const batch = profiles.slice(i, i + batchSize);
-                logger.info(`Processing batch ${Math.floor(i/batchSize) + 1}`);
+            for (let i = 0; i < profiles.length; i++) {
+                const profile = profiles[i];
+                logger.info(`Processing profile ${i + 1} of ${totalProfiles}`);
 
-                const batchPromises = batch.map(async (profile) => {
-                    try {
-                        if (!await linkedinService.validateUrl(profile.linkedinUrl)) {
-                            return {
-                                url: profile.linkedinUrl,
-                                status: 'failed',
-                                error: 'Invalid LinkedIn URL format'
-                            };
-                        }
-
-                        const profileData = await linkedinService.getProfileData(profile.linkedinUrl);
-                        
-                        if (!profileData.profilePicture) {
-                            return {
-                                url: profile.linkedinUrl,
-                                status: 'failed',
-                                error: 'No profile picture URL available'
-                            };
-                        }
-
-                        const processedImagePath = await imageProcessingService.processProfilePicture(
-                            profileData.profilePicture,
-                            profileData.fullName.replace(/\s+/g, '_')
-                        );
-
-                        return {
-                            url: profile.linkedinUrl,
-                            status: 'success',
-                            originalImagePath: processedImagePath.originalPath,
-                            // pixelArtPath: processedImagePath.pixelArtPath,
-                            profilePicture: profileData.profilePicture
-                        };
-
-                    } catch (error) {
-                        logger.error(`Error processing profile ${profile.linkedinUrl}:`, error);
-                        return {
+                try {
+                    if (!await linkedinService.validateUrl(profile.linkedinUrl)) {
+                        results.push({
                             url: profile.linkedinUrl,
                             status: 'failed',
-                            error: error.message
-                        };
+                            error: 'Invalid LinkedIn URL format'
+                        });
+                        continue;
                     }
-                });
 
-                const batchResults = await Promise.all(batchPromises);
-                results.push(...batchResults);
+                    const profileData = await linkedinService.getProfileData(profile.linkedinUrl);
+
+                    if (!profileData.profilePicture) {
+                        results.push({
+                            url: profile.linkedinUrl,
+                            status: 'failed',
+                            error: 'No profile picture URL available'
+                        });
+                        continue;
+                    }
+
+                    const processedImagePath = await imageProcessingService.processProfilePicture(
+                        profileData.profilePicture,
+                        profileData.fullName.replace(/\s+/g, '_'),
+                        profile.hubspotId
+                    );
+
+                    results.push({
+                        url: profile.linkedinUrl,
+                        status: 'success',
+                        originalImagePath: processedImagePath.originalPath,
+                        pixelArtUrls: processedImagePath.pixelArtUrls,
+                        profilePicture: profileData.profilePicture
+                    });
+
+                } catch (error) {
+                    logger.error(`Error processing profile ${profile.linkedinUrl}:`, error);
+                    results.push({
+                        url: profile.linkedinUrl,
+                        status: 'failed',
+                        error: error.message
+                    });
+                }
 
                 // Send progress update with newline
-                const progress = Math.min((i + batchSize) / totalProfiles, 1);
+                const progress = (i + 1) / totalProfiles;
                 logger.info(`Sending progress update: ${Math.round(progress * 100)}%`);
                 res.write(JSON.stringify({ progress }) + '\n');
             }

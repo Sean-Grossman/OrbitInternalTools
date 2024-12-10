@@ -10,22 +10,23 @@ class CsvService {
             return new Promise((resolve, reject) => {
                 fs.createReadStream(filePath)
                     .pipe(csv({
+                        mapHeaders: ({ header }) => header.trim().toLowerCase(),
                         mapValues: ({ header, value }) => value.trim()
                     }))
                     .on('data', (data) => {
                         logger.info('Processing CSV row:', data);
                         
                         // Check if the row has a status of 'failed'
-                        if (!data.profilePicture || data.profilePicture === '') {
+                        if (!data.profilePicture || data.profilePicture === '' && data['record id - contact']) {
                             // Check if the URL exists in any of the columns
-                            const url = Object.values(data).find(value => 
-                                value && value.includes('linkedin.com/in/')
-                            );
+                            const url = data.linkedinurl.includes('linkedin.com/in/') ? data.linkedinurl : null;
+                            const hubspotId = data['record id - contact'];
 
                             if (url) {
                                 results.push({
                                     linkedinUrl: url,
-                                    status: 'pending'
+                                    status: 'pending',
+                                    hubspotId: hubspotId
                                 });
                                 logger.info('Added URL:', url);
                             } else {

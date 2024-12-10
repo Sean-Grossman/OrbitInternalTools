@@ -48,7 +48,8 @@ class ImageProcessingService {
         }
     }
 
-    async processProfilePicture(imageUrl, filename) {
+    async processProfilePicture(imageUrl, filename, hubspotId) {
+        console.log('processProfilePicture', imageUrl, filename, hubspotId);
         let tempFilePath = null;
         try {
             logger.info(`Processing profile picture for: ${filename}`);
@@ -76,17 +77,12 @@ class ImageProcessingService {
 
             // console.log('filename', filename);
             // // Generate pixel art version
-            // const pixelArtUrl = await imagineApiService.generatePixelArt(filename, filename);
+            const pixelArtUrls = await imagineApiService.generatePixelArt(imageUrl, filename, hubspotId);
             
-            // // Download and save pixel art
-            // const pixelArtBuffer = await this.downloadImage(pixelArtUrl);
-            // const pixelArtPath = path.join(this.outputDir, `${filename}_pixel.png`);
-            // await sharp(pixelArtBuffer).toFile(pixelArtPath);
-
             // logger.info(`Images processed and saved: ${outputPath}, ${pixelArtPath}`);
             return {
                 originalPath: outputPath,
-                // pixelArtPath: pixelArtPath
+                pixelArtUrls: pixelArtUrls
             };
 
         } catch (error) {

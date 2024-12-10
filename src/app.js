@@ -34,6 +34,11 @@ app.post('/api/process',
     processController.processProfiles
 );
 
+app.post('/api/process-sheet',
+    processController.processProfiles
+);
+
+
 // Error handling middleware
 app.use((err, req, res, next) => {
     logger.error('Error:', err);
