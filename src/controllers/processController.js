@@ -59,7 +59,7 @@ class ProcessController {
                 } catch (error) {
                     console.error('Error sending status update to Slack:', error);
                 }
-            }, 15 * 60 * 1000); // 15 minutes in milliseconds
+            }, 45 * 60 * 1000); // 45 minutes in milliseconds
 
             // Process CSV file
             const profiles = await csvService.processFile(req.file.path);
