@@ -50,7 +50,9 @@ class ProcessController {
                     const percentage = ((processedCount / totalProfiles) * 100).toFixed(2);
                     await slackAppInstance.client.chat.postMessage({
                         channel: 'C0851R0H5K2',
-                        text: `*Status Update* :hourglass_flowing_sand:\n\n*Processed Profiles:* \`${processedCount}\`\n*Remaining Profiles:* \`${remainingCount}\`\n*Completion:* \`${percentage}%\``,
+                        text: `*Status Update* :hourglass_flowing_sand:\n\n
+                        *File Name:* \`${req.file.originalname}\`\n
+                        *Processed Profiles:* \`${processedCount}\`\n*Remaining Profiles:* \`${remainingCount}\`\n*Completion:* \`${percentage}%\``,
                     });
                 } catch (error) {
                     console.error('Error sending status update to Slack:', error);
