@@ -14,21 +14,25 @@ async function downloadResults(results, existingCsvPath) {
                 .on('error', (error) => reject(error));
         });
 
-        // Append new data to existing data
-        const newData = results.map(result => ({
-            'LinkedIn URL': result.url,
-            'Profile Picture URL': result.status === 'success' ? result.profilePicture : '',
-            'Status': result.status,
-            'Generated Image 1': result.pixelArtUrls && result.pixelArtUrls.length > 0 ? result.pixelArtUrls[0].replace(/^https:\/\/https:\/\//, 'https://') || '' : '',
-            'Generated Image 2': result.pixelArtUrls && result.pixelArtUrls.length > 1 ? result.pixelArtUrls[1].replace(/^https:\/\/https:\/\//, 'https://') || '' : '',
-            'Generated Image 3': result.pixelArtUrls && result.pixelArtUrls.length > 2 ? result.pixelArtUrls[2].replace(/^https:\/\/https:\/\//, 'https://') || '' : '',
-            'Generated Image 4': result.pixelArtUrls && result.pixelArtUrls.length > 3 ? result.pixelArtUrls[3].replace(/^https:\/\/https:\/\//, 'https://') || '' : '',
-        }));
+        // Create a map of existing data for easy lookup
+        const existingDataMap = existingData.reduce((acc, row) => {
+            acc[row['linkedinUrl']] = row;
+            return acc;
+        }, {});
 
-        const combinedData = [...existingData, ...newData];
+        // Update existing data with new fields
+        results.forEach(result => {
+            const existingRow = existingDataMap[result.url];
+            if (existingRow) {
+                existingRow['generatedArt1'] = result.pixelArtUrls && result.pixelArtUrls.length > 0 ? result.pixelArtUrls[0].replace(/^https:\/\/https:\/\//, 'https://') || '' : '';
+                existingRow['generatedArt2'] = result.pixelArtUrls && result.pixelArtUrls.length > 1 ? result.pixelArtUrls[1].replace(/^https:\/\/https:\/\//, 'https://') || '' : '';
+                existingRow['generatedArt3'] = result.pixelArtUrls && result.pixelArtUrls.length > 2 ? result.pixelArtUrls[2].replace(/^https:\/\/https:\/\//, 'https://') || '' : '';
+                existingRow['generatedArt4'] = result.pixelArtUrls && result.pixelArtUrls.length > 3 ? result.pixelArtUrls[3].replace(/^https:\/\/https:\/\//, 'https://') || '' : '';
+            }
+        });
 
-        // Convert combined data back to CSV
-        const csvContent = parse(combinedData);
+        // Convert updated data back to CSV
+        const csvContent = parse(existingData);
 
         return csvContent;
     } catch (error) {
