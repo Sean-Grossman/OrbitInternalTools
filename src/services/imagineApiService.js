@@ -159,13 +159,7 @@ class ImagineApiService {
 
                             await slackAppInstance.client.chat.postMessage({
                                 channel: 'C0851R0H5K2',
-                                text: `
-                                    *Status Update* :hourglass_flowing_sand:\n\n
-                                    *Profile ID:* \`${hubspotId}\`\n
-                                    Image link: \`${imageLink}\`\n
-                                    *Status:* \`Image generation pending for more than 10 minutes\`
-                                    Please check midjourney and imagine api account for more details and resume the process if needed.
-                                `,
+                                text: `*Status Update* :hourglass_flowing_sand:\n\n*Profile ID:* \`${hubspotId}\`\nImage link: \`${imageLink}\`\n*Status:* \`Image generation pending for more than 10 minutes\` Please check midjourney and imagine api account for more details and resume the process if needed.`
                             });
                             console.log("Image generation pending for more than 10 minutes. Skipping record.");
                             resolve([]);
