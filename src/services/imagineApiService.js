@@ -3,6 +3,7 @@ const FormData = require('form-data');
 const logger = require('../utils/logger');
 const AWS = require('aws-sdk');
 const fs = require('fs');
+const { App } = require('@slack/bolt');
 
 /**
  * Service for interacting with Discord's API for image generation
@@ -30,8 +31,8 @@ class ImagineApiService {
             throw new Error(`Missing required Discord configuration: ${missingVars.join(', ')}`);
         }
 
-        const baseURL = process.env.DISCORD_API_URL.endsWith('/') 
-            ? process.env.DISCORD_API_URL 
+        const baseURL = process.env.DISCORD_API_URL.endsWith('/')
+            ? process.env.DISCORD_API_URL
             : `${process.env.DISCORD_API_URL}/`;
 
         this.api = axios.create({
@@ -41,7 +42,7 @@ class ImagineApiService {
                 'Content-Type': 'application/json'
             },
             timeout: 60000,
-            httpsAgent: new (require('https').Agent)({  
+            httpsAgent: new (require('https').Agent)({
                 rejectUnauthorized: false
             })
         });
@@ -53,7 +54,7 @@ class ImagineApiService {
         if (!process.env.DISCORD_CHANNEL_ID) {
             throw new Error('Missing required Discord configuration: DISCORD_CHANNEL_ID');
         }
-        
+
         this.channelId = process.env.DISCORD_CHANNEL_ID;
     }
 
@@ -64,7 +65,7 @@ class ImagineApiService {
     async waitForRateLimit() {
         const timeSinceLastRequest = Date.now() - this.lastRequestTime;
         if (timeSinceLastRequest < this.minRequestInterval) {
-            await new Promise(resolve => 
+            await new Promise(resolve =>
                 setTimeout(resolve, this.minRequestInterval - timeSinceLastRequest)
             );
         }
@@ -81,7 +82,7 @@ class ImagineApiService {
         console.log('generatePixelArt', imageLink, name, hubspotId);
         try {
 
-            const imageFolderExists = await this.checkIfImageFolderExistsOnDigitalOceanSpaces(hubspotId); 
+            const imageFolderExists = await this.checkIfImageFolderExistsOnDigitalOceanSpaces(hubspotId);
 
             if (imageFolderExists) {
                 console.log('Image folder already exists on DigitalOcean Spaces');
@@ -116,6 +117,7 @@ class ImagineApiService {
 
             // Use a promise to wait for the image generation to complete
             const imageUrls = await new Promise((resolve, reject) => {
+                const startTime = Date.now();
                 const intervalId = setInterval(async () => {
                     try {
                         console.log('Checking image details');
@@ -129,6 +131,7 @@ class ImagineApiService {
 
                         const statusData = await statusResponse.json();
                         console.log('Image status', statusData.data.status);
+
                         if (statusData.data.status === 'completed') {
                             clearInterval(intervalId);
                             console.log('Completed image details', statusData.data.url);
@@ -146,6 +149,26 @@ class ImagineApiService {
                         } else if (statusData.data.status === 'failed') {
                             clearInterval(intervalId);
                             reject(new Error('Image generation failed'));
+                        } else if (statusData.data.status === 'pending' && (Date.now() - startTime) > 600000) { // 10 minutes
+                            clearInterval(intervalId);
+
+                            const slackAppInstance = new App({
+                                token: process.env.SLACK_BOT_TOKEN,
+                                signingSecret: process.env.SLACK_SIGNING_SECRET,
+                            });
+
+                            await slackAppInstance.client.chat.postMessage({
+                                channel: 'C0851R0H5K2',
+                                text: `
+                                    *Status Update* :hourglass_flowing_sand:\n\n
+                                    *Profile ID:* \`${hubspotId}\`\n
+                                    Image link: \`${imageLink}\`\n
+                                    *Status:* \`Image generation pending for more than 10 minutes\`
+                                    Please check midjourney and imagine api account for more details and resume the process if needed.
+                                `,
+                            });
+                            console.log("Image generation pending for more than 10 minutes. Skipping record.");
+                            resolve([]);
                         } else {
                             console.log("Image is not finished generating. Status: ", statusData.data.status);
                         }
